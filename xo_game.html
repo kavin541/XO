@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XO Arena — Tic Tac Toe</title>
+<style>
+  :root{--bg:#0b1020;--panel:#121a30;--line:#283452;--text:#f4f7ff;--muted:#9caaca;--blue:#60a5fa;--pink:#f472b6;--green:#34d399}
+  *{box-sizing:border-box} body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 15% 10%,#1c2a50 0,transparent 35%),radial-gradient(circle at 85% 90%,#301b48 0,transparent 32%),var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+  .app{width:min(100%,460px)} .eyebrow{text-align:center;color:var(--blue);font-size:.76rem;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
+  h1{text-align:center;font-size:clamp(2.5rem,10vw,4rem);line-height:1;margin:12px 0 8px;letter-spacing:-.07em} h1 span{color:var(--blue)} .subtitle{text-align:center;color:var(--muted);margin:0 0 26px}
+  .scoreboard{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}.score{background:#11192c;border:1px solid var(--line);border-radius:16px;padding:14px 8px;text-align:center}.score .label{font-size:.76rem;color:var(--muted);font-weight:700}.score .value{font-size:1.65rem;font-weight:850;margin-top:3px}.score.x .value{color:var(--blue)}.score.o .value{color:var(--pink)}
+  .game-card{background:linear-gradient(160deg,rgba(22,32,57,.96),rgba(14,21,39,.96));border:1px solid #2a3858;border-radius:24px;padding:20px;box-shadow:0 24px 70px #0005}
+  .turn{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-weight:650;margin:2px 0 18px;min-height:26px}.turn strong{color:var(--text)}.turn-mark{font-size:1.3rem;color:var(--blue);font-weight:900}.board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .cell{aspect-ratio:1;border:1px solid #2b3958;border-radius:17px;background:linear-gradient(145deg,#19243e,#121a2e);color:var(--text);font-size:clamp(2.7rem,13vw,4.1rem);font-weight:900;display:grid;place-items:center;cursor:pointer;transition:transform .16s,border-color .16s,background .16s;user-select:none}.cell:hover:enabled{transform:translateY(-2px);border-color:#5b77ad;background:#1c2a49}.cell:focus-visible,button:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}.cell.x{color:var(--blue);text-shadow:0 0 24px #60a5fa35}.cell.o{color:var(--pink);text-shadow:0 0 24px #f472b635}.cell.winner{border-color:var(--green);background:#12332f;animation:pulse .7s ease-in-out infinite alternate}.cell:disabled{cursor:default}
+  @keyframes pulse{to{box-shadow:0 0 22px #34d39928;transform:scale(.98)}}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.btn{border:0;border-radius:12px;padding:13px 14px;font-weight:800;font-size:.92rem;cursor:pointer;transition:transform .15s,filter .15s}.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.primary{background:linear-gradient(100deg,#60a5fa,#818cf8);color:#081225}.secondary{background:#202c47;border:1px solid #354464;color:var(--text)}.hint{text-align:center;color:var(--muted);font-size:.8rem;margin:18px 0 0}.hint span{color:#d5def4}
+  @media(max-width:380px){.game-card{padding:14px}.board{gap:7px}.cell{border-radius:12px}.score{padding:11px 4px}}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="eyebrow">The classic game</div>
+  <h1>XO <span>ARENA</span></h1>
+  <p class="subtitle">Two players. One board. Let the best player win.</p>
+  <section class="scoreboard" aria-label="Scoreboard">
+    <div class="score x"><div class="label">PLAYER X</div><div class="value" id="scoreX">0</div></div>
+    <div class="score"><div class="label">DRAWS</div><div class="value" id="scoreDraw">0</div></div>
+    <div class="score o"><div class="label">PLAYER O</div><div class="value" id="scoreO">0</div></div>
+  </section>
+  <section class="game-card">
+    <div class="turn" id="status" aria-live="polite"><span class="turn-mark">✕</span><span><strong>Player X</strong>'s turn</span></div>
+    <div class="board" id="board" role="group" aria-label="Tic tac toe board">
+      <button class="cell" data-index="0" aria-label="Cell 1"></button><button class="cell" data-index="1" aria-label="Cell 2"></button><button class="cell" data-index="2" aria-label="Cell 3"></button>
+      <button class="cell" data-index="3" aria-label="Cell 4"></button><button class="cell" data-index="4" aria-label="Cell 5"></button><button class="cell" data-index="5" aria-label="Cell 6"></button>
+      <button class="cell" data-index="6" aria-label="Cell 7"></button><button class="cell" data-index="7" aria-label="Cell 8"></button><button class="cell" data-index="8" aria-label="Cell 9"></button>
+    </div>
+    <div class="actions"><button class="btn primary" id="restart">↻ Restart round</button><button class="btn secondary" id="newGame">＋ New game</button></div>
+  </section>
+  <p class="hint"><span>HOW TO PLAY</span> · Get 3 marks in a row to win.</p>
+</main>
+<script>
+  const cells = [...document.querySelectorAll('.cell')];
+  const statusEl = document.getElementById('status');
+  const scoreXEl = document.getElementById('scoreX');
+  const scoreOEl = document.getElementById('scoreO');
+  const scoreDrawEl = document.getElementById('scoreDraw');
+  const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  let board = Array(9).fill('');
+  let current = 'X';
+  let active = true;
+  let scores = {X:0,O:0,draw:0};
+
+  function showTurn(message, mark = current) {
+    statusEl.innerHTML = `<span class="turn-mark" style="color:${mark === 'X' ? 'var(--blue)' : 'var(--pink)'}">${mark === 'X' ? '✕' : '◯'}</span><span>${message}</span>`;
+  }
+  function renderScores(){ scoreXEl.textContent=scores.X; scoreOEl.textContent=scores.O; scoreDrawEl.textContent=scores.draw; }
+  function handleMove(index){
+    if(!active || board[index]) return;
+    board[index]=current;
+    const cell=cells[index];
+    cell.textContent=current==='X'?'✕':'◯';
+    cell.classList.add(current.toLowerCase());
+    cell.setAttribute('aria-label',`Cell ${index+1}: ${current}`);
+    cell.disabled=true;
+    const winningLine=wins.find(line=>line.every(i=>board[i]===current));
+    if(winningLine){
+      active=false; scores[current]++; renderScores();
+      winningLine.forEach(i=>cells[i].classList.add('winner'));
+      showTurn(`<strong>Player ${current} wins!</strong> 🎉`,current);
+      cells.forEach(c=>c.disabled=true);
+    } else if(board.every(Boolean)){
+      active=false; scores.draw++; renderScores(); showTurn('<strong>It’s a draw!</strong> 🤝');
+    } else {
+      current=current==='X'?'O':'X';
+      showTurn(`<strong>Player ${current}</strong>'s turn`,current);
+    }
+  }
+  function restartRound(){
+    board=Array(9).fill(''); current='X'; active=true;
+    cells.forEach((cell,i)=>{cell.textContent='';cell.disabled=false;cell.classList.remove('x','o','winner');cell.setAttribute('aria-label',`Cell ${i+1}`);});
+    showTurn(`<strong>Player X</strong>'s turn`,'X');
+  }
+  cells.forEach((cell,i)=>cell.addEventListener('click',()=>handleMove(i)));
+  document.getElementById('restart').addEventListener('click',restartRound);
+  document.getElementById('newGame').addEventListener('click',()=>{scores={X:0,O:0,draw:0};renderScores();restartRound();});
+</script>
+</body>
+</html>
